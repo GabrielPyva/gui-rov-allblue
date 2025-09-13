@@ -1,0 +1,4 @@
+# Este script requer um ambiente ROS com rospy.
+# A instalação é parte do ROS (ex: sudo apt-get install python3-rospy)
+# e não é feita via pip.
+rospy
