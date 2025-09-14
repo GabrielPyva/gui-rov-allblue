@@ -24,13 +24,17 @@ def video_simulator():
     frame_count = 0
     rospy.loginfo("Nó de simulação de vídeo iniciado. Publicando frames...")
 
+    # Define a cor de fundo (BGR)
+    dark_blue_bg = (100, 20, 20)
+
     while not rospy.is_shutdown():
         # --- Cria os frames para cada câmera ---
         # Usamos o contador de frames para criar um movimento simples
         frame_count += 1
 
         # Frame da Câmera Esquerda
-        img_left = np.zeros((480, 640, 3), dtype=np.uint8) # Imagem preta 640x480
+        # ALTERAÇÃO: Usamos np.full() para criar uma imagem com a cor de fundo azul escura
+        img_left = np.full((480, 640, 3), dark_blue_bg, dtype=np.uint8)
         text_left = f"Left Cam - Frame: {frame_count}"
         cv2.putText(img_left, text_left, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         # Desenha um retângulo que se move
@@ -38,13 +42,15 @@ def video_simulator():
         cv2.rectangle(img_left, (rect_x - 20, 200), (rect_x + 20, 240), (0, 255, 0), -1)
 
         # Frame da Câmera Direita
-        img_right = np.zeros((480, 640, 3), dtype=np.uint8)
+        # ALTERAÇÃO: Usamos np.full() para criar uma imagem com a cor de fundo azul escura
+        img_right = np.full((480, 640, 3), dark_blue_bg, dtype=np.uint8)
         text_right = f"Right Cam - Frame: {frame_count}"
         cv2.putText(img_right, text_right, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         cv2.circle(img_right, (320, 240), (frame_count % 100) + 10, (0, 0, 255), 2)
 
         # Frame da Câmera Inferior
-        img_down = np.zeros((480, 640, 3), dtype=np.uint8)
+        # ALTERAÇÃO: Usamos np.full() para criar uma imagem com a cor de fundo azul escura
+        img_down = np.full((480, 640, 3), dark_blue_bg, dtype=np.uint8)
         text_down = f"Down Cam - Frame: {frame_count}"
         cv2.putText(img_down, text_down, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         cv2.line(img_down, (0,0), (frame_count % 640, frame_count % 480), (255, 0, 0), 3)
