@@ -1,4 +1,5 @@
-# main.py
+# Adicione a importação do nosso novo widget no topo do arquivo
+from widgets import BatteryWidget
 
 import sys
 import json
@@ -133,6 +134,10 @@ class ROV_GUI(QWidget):
             self.data_labels[chave] = value_label
             grid_layout.addWidget(value_label, pos[0], pos[1] + 1)
         
+        # --- NOVA SEÇÃO: Adiciona o widget de bateria ---
+        self.battery_widget = BatteryWidget(self) # Define a janela principal como "pai"
+        self.battery_widget.move(20, 20) # Posiciona no canto superior esquerdo com uma margem
+        
         self.show()
     
     # Adicione este novo método à classe ROV_GUI para lidar com o redimensionamento da janela
@@ -187,6 +192,14 @@ class ROV_GUI(QWidget):
         # Este método permanece o mesmo
         try:
             dados = json.loads(json_data); self.setWindowTitle("Painel de Controle do ROV - Conectado")
+
+            # --- ATUALIZAÇÃO: Pega o dado da bateria ---
+            bateria = dados.get('battery', 0)
+            if bateria is None: bateria = 0
+                
+            # --- NOVA LINHA: Envia o dado para o widget de bateria ---
+            self.battery_widget.set_level(bateria)
+
             imu_data = dados.get('imu', {}); accel_data = imu_data.get('linear_acceleration', {}); orient_data = imu_data.get('orientation', {})
             local_pos_data = dados.get('local_position', {}); pos_data = local_pos_data.get('position', {})
             gps_data = dados.get('gps', {})
