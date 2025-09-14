@@ -92,7 +92,7 @@ class ROV_GUI(QWidget):
         
         self.inicializar_ui()
         self.conectar_ros()
-        self.conectar_video()
+        self.conectar_videos()
 
     def inicializar_ui(self):
         """
@@ -103,18 +103,15 @@ class ROV_GUI(QWidget):
         self.setWindowTitle("Painel de Controle do ROV")
         self.setStyleSheet("background-color: black;")
 
-        # 1. Camada de Vídeo (será a base)
-        self.video_label = QLabel(self) # Define a janela principal como "pai"
-        self.video_label.setGeometry(0, 0, self.width(), self.height()) # Ocupa todo o espaço
+        # --- Camada de Vídeo Principal ---
+        self.video_label = QLabel(self)
         self.video_label.setScaledContents(True)
 
-        # 2. Camada de Dados (flutuará por cima)
-        data_container = QWidget(self) # Define a janela principal como "pai"
-        data_container.setGeometry(0, 0, self.width(), self.height()) # Ocupa todo o espaço
-        data_container.setStyleSheet("background-color: transparent;")
-
-        # 3. Preenche a camada de dados com a grade de telemetria (código idêntico ao anterior)
-        grid_layout = QGridLayout(data_container)
+        # --- Camada de Dados ---
+        self.data_container = QWidget(self)
+        self.data_container.setStyleSheet("background-color: transparent;")
+        
+        grid_layout = QGridLayout(self.data_container)
         bold_font = QFont(); bold_font.setBold(True)
         campos = [
             ('pressure', 'Pressão (hPa):', (0, 0)), ('temperature', 'Temperatura (°C):', (1, 0)),
@@ -137,6 +134,13 @@ class ROV_GUI(QWidget):
         # --- NOVA SEÇÃO: Adiciona o widget de bateria ---
         self.battery_widget = BatteryWidget(self) # Define a janela principal como "pai"
         self.battery_widget.move(20, 20) # Posiciona no canto superior esquerdo com uma margem
+
+        # --- NOVO: Widget do Miniplayer da Câmera Inferior ---
+        self.down_camera_label = QLabel(self)
+        self.down_camera_label.setFixedSize(320, 180) # Tamanho 16:9
+        self.down_camera_label.setScaledContents(True)
+        # Adiciona uma borda branca para destacar o miniplayer
+        self.down_camera_label.setStyleSheet("border: 2px solid white;")
         
         self.show()
     
@@ -145,37 +149,49 @@ class ROV_GUI(QWidget):
         """
         Este evento é chamado toda vez que a janela muda de tamanho.
         Garante que tanto o vídeo quanto a camada de dados se ajustem.
+        ATUALIZADO: Agora também posiciona o miniplayer no canto inferior direito.
         """
         super().resizeEvent(event)
+        # Redimensiona o vídeo de fundo e a camada de dados
         self.video_label.resize(self.size())
-        # Encontra o widget da camada de dados (que é o segundo filho) e o redimensiona
-        data_container = self.findChild(QWidget, '', Qt.FindDirectChildrenOnly)
-        if data_container:
-            # A lógica aqui é um pouco mais complexa porque o video_label também é um filho
-            # Vamos procurar pelo widget que não é o video_label
-            for child in self.findChildren(QWidget, '', Qt.FindDirectChildrenOnly):
-                if child != self.video_label:
-                    child.resize(self.size())
-                    break
+        self.data_container.resize(self.size())
+        
+        # Calcula a nova posição do miniplayer com uma margem de 20px
+        margin = 20
+        new_x = self.width() - self.down_camera_label.width() - margin
+        new_y = self.height() - self.down_camera_label.height() - margin
+        self.down_camera_label.move(new_x, new_y)
 
-    def conectar_video(self):
+    def conectar_videos(self):
         ip_wsl = "172.30.55.191" # <-- COLOQUE SEU IP AQUI
         # **IMPORTANTE**: Voltamos para a URL original, sem Theora.
-        url_stream = f"http://{ip_wsl}:8080/stream?topic=/rov/camera/stereo/left/image_raw"
+        # --- Conexão da Câmera Principal (Esquerda) ---
+        url_stream_main = f"http://{ip_wsl}:8080/stream?topic=/rov/camera/stereo/left/image_raw"
+        self.main_video_thread = QThread()
+        self.main_video_worker = VideoWorker(url_stream_main)
+        self.main_video_worker.moveToThread(self.main_video_thread)
+        self.main_video_thread.started.connect(self.main_video_worker.run)
+        self.main_video_worker.frame_pronto.connect(self.atualizar_frame_video)
+        self.main_video_thread.start()
 
-        self.video_thread = QThread()
-        self.video_worker = VideoWorker(url_stream)
-        self.video_worker.moveToThread(self.video_thread)
-
-        self.video_thread.started.connect(self.video_worker.run)
-        self.video_worker.frame_pronto.connect(self.atualizar_frame_video)
-        
-        self.video_thread.start()
+        # --- NOVA: Conexão da Câmera Inferior ---
+        url_stream_down = f"http://{ip_wsl}:8080/stream?topic=/rov/camera/down/image_raw"
+        self.down_video_thread = QThread()
+        self.down_video_worker = VideoWorker(url_stream_down)
+        self.down_video_worker.moveToThread(self.down_video_thread)
+        self.down_video_thread.started.connect(self.down_video_worker.run)
+        self.down_video_worker.frame_pronto.connect(self.atualizar_frame_down_camera)
+        self.down_video_thread.start()
 
     @Slot(QPixmap)
     def atualizar_frame_video(self, pixmap):
         """Recebe o novo frame e o exibe no QLabel."""
         self.video_label.setPixmap(pixmap)
+
+    @Slot(QPixmap)
+    def atualizar_frame_down_camera(self, pixmap):
+        """NOVO: Slot para atualizar o miniplayer da câmera inferior."""
+        self.down_camera_label.setPixmap(pixmap)
 
     def conectar_ros(self):
         # Este método permanece o mesmo
@@ -223,13 +239,20 @@ class ROV_GUI(QWidget):
             print(f"Erro ao processar dados: {e}")
 
     def closeEvent(self, event):
+        """ATUALIZADO: Garante que a thread da segunda câmera também seja fechada."""
         print("Fechando a aplicação...")
-        self.video_worker.stop()
-        self.video_thread.quit()
-        self.video_thread.wait()
+        self.main_video_worker.stop()
+        self.main_video_thread.quit()
+        self.main_video_thread.wait()
+        
+        self.down_video_worker.stop()
+        self.down_video_thread.quit()
+        self.down_video_thread.wait()
+
         self.ros_worker.stop()
         self.ros_thread.quit()
         self.ros_thread.wait()
+        
         event.accept()
 
 if __name__ == "__main__":
