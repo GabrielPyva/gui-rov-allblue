@@ -1,5 +1,5 @@
 # Adicione a importação do nosso novo widget no topo do arquivo
-from widgets import BatteryWidget
+from widgets import BatteryWidget, TemperatureWidget
 
 import sys
 import json
@@ -135,6 +135,11 @@ class ROV_GUI(QWidget):
         self.battery_widget = BatteryWidget(self) # Define a janela principal como "pai"
         self.battery_widget.move(20, 20) # Posiciona no canto superior esquerdo com uma margem
 
+        # --- NOVO: Adiciona o widget de temperatura ---
+        self.temp_widget = TemperatureWidget(self)
+        # Posiciona 10px à direita do widget de bateria (que tem 100px de largura)
+        self.temp_widget.move(20 + 100 + 10, 20) 
+
         # --- NOVO: Widget do Miniplayer da Câmera Inferior ---
         self.down_camera_label = QLabel(self)
         self.down_camera_label.setFixedSize(320, 180) # Tamanho 16:9
@@ -212,9 +217,11 @@ class ROV_GUI(QWidget):
             # --- ATUALIZAÇÃO: Pega o dado da bateria ---
             bateria = dados.get('battery', 0)
             if bateria is None: bateria = 0
-                
-            # --- NOVA LINHA: Envia o dado para o widget de bateria ---
             self.battery_widget.set_level(bateria)
+
+            # --- NOVA LINHA: Pega e atualiza a temperatura ---
+            temperatura = dados.get('temperature', 0)
+            self.temp_widget.set_temperature(temperatura)
 
             imu_data = dados.get('imu', {}); accel_data = imu_data.get('linear_acceleration', {}); orient_data = imu_data.get('orientation', {})
             local_pos_data = dados.get('local_position', {}); pos_data = local_pos_data.get('position', {})

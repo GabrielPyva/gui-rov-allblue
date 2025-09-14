@@ -66,3 +66,50 @@ class BatteryWidget(QWidget):
         
         # Para desenhar o texto dentro
         painter.drawText(rect, Qt.AlignCenter, text)
+
+class TemperatureWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._temperature = 0.0
+        self.setFixedSize(120, 45) # Espaço para o ícone e o texto
+
+    def set_temperature(self, temp):
+        """Método público para atualizar a temperatura."""
+        self._temperature = temp if temp is not None else 0.0
+        self.update() # Força o widget a se redesenhar
+
+    def paintEvent(self, event):
+        """Desenha o ícone do termômetro e o valor."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Cores e canetas
+        pen = QPen(QColor("white"), 2)
+        brush_red = QBrush(QColor("red"))
+
+        # Desenha o bulbo (círculo) do termômetro
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        bulb_rect = QRectF(5, 20, 20, 20)
+        painter.drawEllipse(bulb_rect)
+
+        # Desenha o corpo do termômetro
+        body_rect = QRectF(12, 5, 6, 20)
+        painter.drawRoundedRect(body_rect, 3, 3)
+        
+        # Preenchimento vermelho (estático, apenas para o visual)
+        fill_bulb_rect = QRectF(9, 24, 12, 12)
+        painter.setBrush(brush_red)
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(fill_bulb_rect)
+        painter.drawRect(QRectF(13, 15, 4, 11))
+
+        # Desenha o texto da temperatura
+        font = QFont("Arial", 14)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QPen(QColor("white")))
+        
+        text = f"{self._temperature:.1f}°C"
+        text_rect = QRectF(30, 0, 90, 45)
+        painter.drawText(text_rect, Qt.AlignCenter, text)
