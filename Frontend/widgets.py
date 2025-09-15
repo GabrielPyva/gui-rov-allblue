@@ -113,3 +113,60 @@ class TemperatureWidget(QWidget):
         text = f"{self._temperature:.1f}°C"
         text_rect = QRectF(30, 0, 90, 45)
         painter.drawText(text_rect, Qt.AlignCenter, text)
+
+class DepthWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._depth = 0.0
+        
+        # Constantes para o cálculo da profundidade
+        self.RHO = 1025  # Densidade da água do mar em kg/m^3
+        self.G = 9.80665  # Aceleração da gravidade em m/s^2
+        self.P_ATM = 101325  # Pressão atmosférica em Pascals (1013.25 hPa)
+        
+        self.setFixedSize(120, 45)
+
+    def set_pressure(self, pressure_hpa):
+        """
+        Recebe a pressão absoluta em hectopascais (hPa), calcula e atualiza a profundidade.
+        """
+        if pressure_hpa is None:
+            pressure_hpa = self.P_ATM / 100 # Assume pressão atmosférica se o dado for nulo
+
+        # 1. Converter pressão para Pascals
+        pressure_pa = pressure_hpa * 100
+        
+        # 2. Calcular a pressão manométrica
+        gauge_pressure = pressure_pa - self.P_ATM
+        
+        # 3. Calcular a profundidade (garante que não seja negativa)
+        if gauge_pressure > 0:
+            self._depth = gauge_pressure / (self.RHO * self.G)
+        else:
+            self._depth = 0.0
+            
+        self.update() # Força o redesenho
+
+    def paintEvent(self, event):
+        """Desenha o ícone de profundidade e o valor."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Desenha o ícone da seta para baixo
+        pen = QPen(QColor("white"), 2)
+        painter.setPen(pen)
+        
+        # Linha principal da seta
+        painter.drawLine(15, 10, 15, 35)
+        # Ponta da seta
+        painter.drawLine(5, 25, 15, 35)
+        painter.drawLine(25, 25, 15, 35)
+
+        # Desenha o texto da profundidade
+        font = QFont("Arial", 14)
+        font.setBold(True)
+        painter.setFont(font)
+        
+        text = f"{self._depth:.1f} m"
+        text_rect = QRectF(30, 0, 90, 45)
+        painter.drawText(text_rect, Qt.AlignCenter, text)

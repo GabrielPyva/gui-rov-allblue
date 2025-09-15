@@ -1,5 +1,5 @@
 # Adicione a importação do nosso novo widget no topo do arquivo
-from widgets import BatteryWidget, TemperatureWidget
+from widgets import BatteryWidget, TemperatureWidget, DepthWidget
 
 import sys
 import json
@@ -138,7 +138,12 @@ class ROV_GUI(QWidget):
         # --- NOVO: Adiciona o widget de temperatura ---
         self.temp_widget = TemperatureWidget(self)
         # Posiciona 10px à direita do widget de bateria (que tem 100px de largura)
-        self.temp_widget.move(20 + 100 + 10, 20) 
+        self.temp_widget.move(20 + 100 + 10, 20)
+
+        # --- NOVO: Adiciona o widget de profundidade ---
+        self.depth_widget = DepthWidget(self)
+        # Posiciona ao lado do widget de temperatura
+        self.depth_widget.move(20 + 100 + 10 + 120 + 10, 20)
 
         # --- NOVO: Widget do Miniplayer da Câmera Inferior ---
         self.down_camera_label = QLabel(self)
@@ -212,7 +217,8 @@ class ROV_GUI(QWidget):
     def atualizar_dados(self, json_data):
         # Este método permanece o mesmo
         try:
-            dados = json.loads(json_data); self.setWindowTitle("Painel de Controle do ROV - Conectado")
+            dados = json.loads(json_data)
+            self.setWindowTitle("Painel de Controle do ROV - Conectado")
 
             # --- ATUALIZAÇÃO: Pega o dado da bateria ---
             bateria = dados.get('battery', 0)
@@ -222,6 +228,10 @@ class ROV_GUI(QWidget):
             # --- NOVA LINHA: Pega e atualiza a temperatura ---
             temperatura = dados.get('temperature', 0)
             self.temp_widget.set_temperature(temperatura)
+
+            # --- NOVA LINHA: Pega a pressão e atualiza o widget de profundidade ---
+            pressao = dados.get('pressure', 0)
+            self.depth_widget.set_pressure(pressao)
 
             imu_data = dados.get('imu', {}); accel_data = imu_data.get('linear_acceleration', {}); orient_data = imu_data.get('orientation', {})
             local_pos_data = dados.get('local_position', {}); pos_data = local_pos_data.get('position', {})
