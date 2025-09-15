@@ -103,7 +103,6 @@ def quaternion_to_roll_degrees(w, x, y, z):
 class ROV_GUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.data_labels = {}
         
         self.inicializar_ui()
         self.conectar_ros()
@@ -121,30 +120,6 @@ class ROV_GUI(QWidget):
         # --- Camada de Vídeo Principal ---
         self.video_label = QLabel(self)
         self.video_label.setScaledContents(True)
-
-        # --- Camada de Dados ---
-        self.data_container = QWidget(self)
-        self.data_container.setStyleSheet("background-color: transparent;")
-        
-        grid_layout = QGridLayout(self.data_container)
-        bold_font = QFont(); bold_font.setBold(True)
-        campos = [
-            ('pressure', 'Pressão (hPa):', (0, 0)), ('temperature', 'Temperatura (°C):', (1, 0)),
-            ('battery', 'Bateria (%):', (2, 0)), ('accel_x', 'Acel. Linear X:', (4, 0)),
-            ('accel_y', 'Acel. Linear Y:', (5, 0)), ('accel_z', 'Acel. Linear Z:', (6, 0)),
-            ('pos_x', 'Posição Local X:', (8, 0)), ('pos_y', 'Posição Local Y:', (9, 0)),
-            ('pos_z', 'Posição Local Z:', (10, 0)), ('orient_x', 'Orientação X (quat):', (4, 2)),
-            ('orient_y', 'Orientação Y (quat):', (5, 2)), ('orient_z', 'Orientação Z (quat):', (6, 2)),
-            ('orient_w', 'Orientação W (quat):', (7, 2)), ('gps_lat', 'Latitude:', (9, 2)),
-            ('gps_lon', 'Longitude:', (10, 2)), ('gps_alt', 'Altitude:', (11, 2)),
-        ]
-        text_palette = QPalette(); text_palette.setColor(QPalette.WindowText, QColor('white'))
-        for chave, texto, pos in campos:
-            title_label = QLabel(texto); title_label.setFont(bold_font); title_label.setPalette(text_palette)
-            grid_layout.addWidget(title_label, pos[0], pos[1])
-            value_label = QLabel("N/A"); value_label.setPalette(text_palette)
-            self.data_labels[chave] = value_label
-            grid_layout.addWidget(value_label, pos[0], pos[1] + 1)
         
         # --- NOVA SEÇÃO: Adiciona o widget de bateria ---
         self.battery_widget = BatteryWidget(self) # Define a janela principal como "pai"
@@ -186,7 +161,6 @@ class ROV_GUI(QWidget):
         super().resizeEvent(event)
         # Redimensiona o vídeo de fundo e a camada de dados
         self.video_label.resize(self.size())
-        self.data_container.resize(self.size())
         
         # Calcula a nova posição do miniplayer com uma margem de 20px
         margin = 20
@@ -283,23 +257,6 @@ class ROV_GUI(QWidget):
 
             imu_data = dados.get('imu', {}); accel_data = imu_data.get('linear_acceleration', {}); orient_data = imu_data.get('orientation', {})
             local_pos_data = dados.get('local_position', {}); pos_data = local_pos_data.get('position', {})
-            gps_data = dados.get('gps', {})
-            self.data_labels['pressure'].setText(f"{dados.get('pressure', 0):.2f}")
-            self.data_labels['temperature'].setText(f"{dados.get('temperature', 0):.2f}")
-            self.data_labels['battery'].setText(f"{dados.get('battery', 0):.1f}")
-            self.data_labels['accel_x'].setText(f"{accel_data.get('x', 0):.3f}")
-            self.data_labels['accel_y'].setText(f"{accel_data.get('y', 0):.3f}")
-            self.data_labels['accel_z'].setText(f"{accel_data.get('z', 0):.3f}")
-            self.data_labels['pos_x'].setText(f"{pos_data.get('x', 0):.2f}")
-            self.data_labels['pos_y'].setText(f"{pos_data.get('y', 0):.2f}")
-            self.data_labels['pos_z'].setText(f"{pos_data.get('z', 0):.2f}")
-            self.data_labels['orient_x'].setText(f"{orient_data.get('x', 0):.3f}")
-            self.data_labels['orient_y'].setText(f"{orient_data.get('y', 0):.3f}")
-            self.data_labels['orient_z'].setText(f"{orient_data.get('z', 0):.3f}")
-            self.data_labels['orient_w'].setText(f"{orient_data.get('w', 0):.3f}")
-            self.data_labels['gps_lat'].setText(f"{gps_data.get('latitude', 0):.6f}")
-            self.data_labels['gps_lon'].setText(f"{gps_data.get('longitude', 0):.6f}")
-            self.data_labels['gps_alt'].setText(f"{gps_data.get('altitude', 0):.2f}")
         except (json.JSONDecodeError, TypeError) as e:
             print(f"Erro ao processar dados: {e}")
 
