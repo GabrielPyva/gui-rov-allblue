@@ -1,5 +1,5 @@
 # Adicione a importação do nosso novo widget no topo do arquivo
-from widgets import BatteryWidget, TemperatureWidget, DepthWidget
+from widgets import BatteryWidget, TemperatureWidget, DepthWidget, CompassWidget
 
 import sys
 import json
@@ -8,6 +8,7 @@ import os
 import cv2 # OpenCV
 import numpy as np
 import urllib.request # Para abrir a URL do vídeo
+import math
 
 # --- NOVOS IMPORTS E AJUSTES ---
 from PySide6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QStackedLayout
@@ -83,6 +84,12 @@ class VideoWorker(QObject):
     def stop(self):
         self.is_running = False
 
+def quaternion_to_yaw_degrees(w, x, y, z):
+    """Converte um quatérnion para um ângulo de guinada (yaw) em graus."""
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
+    yaw_rad = math.atan2(siny_cosp, cosy_cosp)
+    return math.degrees(yaw_rad)
 
 # --- Janela Principal da GUI (Atualizada) ---
 class ROV_GUI(QWidget):
@@ -145,6 +152,10 @@ class ROV_GUI(QWidget):
         # Posiciona ao lado do widget de temperatura
         self.depth_widget.move(20 + 100 + 10 + 120 + 10, 20)
 
+        # --- NOVO: Adiciona o widget de bússola ---
+        self.compass_widget = CompassWidget(self)
+        # A posição será definida dinamicamente no resizeEvent para manter centralizado
+
         # --- NOVO: Widget do Miniplayer da Câmera Inferior ---
         self.down_camera_label = QLabel(self)
         self.down_camera_label.setFixedSize(320, 180) # Tamanho 16:9
@@ -171,6 +182,10 @@ class ROV_GUI(QWidget):
         new_x = self.width() - self.down_camera_label.width() - margin
         new_y = self.height() - self.down_camera_label.height() - margin
         self.down_camera_label.move(new_x, new_y)
+
+        # --- NOVO: Posiciona a bússola ---
+        new_x_compass = (self.width() - self.compass_widget.width()) / 2
+        self.compass_widget.move(int(new_x_compass), margin)
 
     def conectar_videos(self):
         ip_wsl = "172.30.55.191" # <-- COLOQUE SEU IP AQUI
@@ -232,6 +247,19 @@ class ROV_GUI(QWidget):
             # --- NOVA LINHA: Pega a pressão e atualiza o widget de profundidade ---
             pressao = dados.get('pressure', 0)
             self.depth_widget.set_pressure(pressao)
+
+            # --- NOVA SEÇÃO: Atualiza a Bússola ---
+            imu_data = dados.get('imu', {})
+            orient_data = imu_data.get('orientation', {})
+            if orient_data:
+                w = orient_data.get('w', 1.0)
+                x = orient_data.get('x', 0.0)
+                y = orient_data.get('y', 0.0)
+                z = orient_data.get('z', 0.0)
+                
+                # Converte o quatérnion para yaw e atualiza o widget
+                yaw_angle = quaternion_to_yaw_degrees(w, x, y, z)
+                self.compass_widget.set_yaw_angle(yaw_angle)
 
             imu_data = dados.get('imu', {}); accel_data = imu_data.get('linear_acceleration', {}); orient_data = imu_data.get('orientation', {})
             local_pos_data = dados.get('local_position', {}); pos_data = local_pos_data.get('position', {})

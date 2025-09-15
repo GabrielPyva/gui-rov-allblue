@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont
-from PySide6.QtCore import Qt, QRectF
+from PySide6.QtCore import Qt, QRectF, QPointF
 
 class BatteryWidget(QWidget):
     def __init__(self, parent=None):
@@ -170,3 +170,60 @@ class DepthWidget(QWidget):
         text = f"{self._depth:.1f} m"
         text_rect = QRectF(30, 0, 90, 45)
         painter.drawText(text_rect, Qt.AlignCenter, text)
+
+class CompassWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._yaw_angle = 0.0  # Ângulo de guinada em graus
+        self.setFixedSize(75, 75)
+
+    def set_yaw_angle(self, angle_deg):
+        """Atualiza o ângulo de guinada (direção) da bússola."""
+        self._yaw_angle = angle_deg
+        self.update()
+
+    def paintEvent(self, event):
+        """Desenha a bússola."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        center_x, center_y = self.width() / 2, self.height() / 2
+        radius = min(center_x, center_y) - 5
+        
+        # --- Desenha o fundo da bússola e os pontos cardeais ---
+        painter.setPen(QPen(QColor(255, 255, 255, 150), 2))
+        painter.setBrush(QBrush(QColor(0, 0, 0, 120)))
+        painter.drawEllipse(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2))
+
+        font = QFont("Arial", 8, QFont.Bold)
+        painter.setFont(font)
+        painter.setPen(QPen(QColor("white")))
+        painter.drawText(QRectF(center_x - 5, center_y - radius, 10, 15), Qt.AlignCenter, "N")
+        painter.drawText(QRectF(center_x - 5, center_y + radius - 15, 10, 15), Qt.AlignCenter, "S")
+        painter.drawText(QRectF(center_x - radius, center_y - 5, 15, 10), Qt.AlignCenter, "W")
+        painter.drawText(QRectF(center_x + radius - 15, center_y - 5, 15, 10), Qt.AlignCenter, "E")
+
+        # --- Desenha o ponteiro rotacionado ---
+        painter.save()  # Salva o estado atual do painter
+        
+        # Move o ponto de origem do painter para o centro da bússola
+        painter.translate(center_x, center_y)
+        # Rotaciona o sistema de coordenadas pelo ângulo de guinada
+        painter.rotate(self._yaw_angle)
+        
+        # Desenha o ponteiro (um triângulo) já rotacionado
+        # A ponta vermelha aponta para o "Norte" relativo ao ROV
+        pointer_pen = QPen(QColor("red"), 2)
+        pointer_brush = QBrush(QColor("red"))
+        painter.setPen(pointer_pen)
+        painter.setBrush(pointer_brush)
+        
+        # Coordenadas do triângulo (apontando para cima, que agora é a direção do yaw)
+        points = [
+            (0, -radius * 0.8), # Ponto de cima
+            (10, -radius * 0.5), # Ponto inferior direito
+            (-10, -radius * 0.5) # Ponto inferior esquerdo
+        ]
+        painter.drawPolygon([QPointF(p[0], p[1]) for p in points])
+        
+        painter.restore() # Restaura o estado do painter para o original
