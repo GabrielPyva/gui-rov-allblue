@@ -227,3 +227,55 @@ class CompassWidget(QWidget):
         painter.drawPolygon([QPointF(p[0], p[1]) for p in points])
         
         painter.restore() # Restaura o estado do painter para o original
+
+class RollIndicatorWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._roll_angle = 0.0  # Ângulo de rolagem em graus
+        # Definimos um tamanho fixo para o widget
+        self.setFixedSize(200, 200)
+        # Torna o fundo do widget transparente
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+    def set_roll_angle(self, angle_deg):
+        """Atualiza o ângulo de rolagem."""
+        self._roll_angle = angle_deg
+        self.update()
+
+    def paintEvent(self, event):
+        """Desenha o indicador em forma de V."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # O centro do widget será o nosso ponto de pivô
+        center_x = self.width() / 2
+        center_y = self.height() / 2
+
+        # Salva o estado atual do painter
+        painter.save()
+
+        # Move a origem do sistema de coordenadas para o centro do widget
+        painter.translate(center_x, center_y)
+        # Rotaciona todo o sistema de coordenadas pelo ângulo de roll
+        painter.rotate(self._roll_angle)
+        
+        # Desenha a forma de 'V' e as linhas horizontais no novo sistema rotacionado
+        # O pivô (0,0) agora é o centro do widget
+        pen = QPen(QColor("white"), 3)
+        painter.setPen(pen)
+
+        # Coordenadas do 'V' relativas ao centro (pivô)
+        v_tip = QPointF(0, 0)
+        v_top_left = QPointF(-40, -40)
+        v_top_right = QPointF(40, -40)
+        
+        # Desenha as duas pernas do 'V'
+        painter.drawLine(v_top_left, v_tip)
+        painter.drawLine(v_top_right, v_tip)
+        
+        # Desenha as linhas horizontais que se estendem das pontas do 'V'
+        painter.drawLine(v_top_left, QPointF(-100, -40))
+        painter.drawLine(v_top_right, QPointF(100, -40))
+
+        # Restaura o estado do painter (remove a translação e rotação)
+        painter.restore()

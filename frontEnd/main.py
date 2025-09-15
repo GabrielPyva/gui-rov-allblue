@@ -1,5 +1,5 @@
 # Adicione a importação do nosso novo widget no topo do arquivo
-from widgets import BatteryWidget, TemperatureWidget, DepthWidget, CompassWidget
+from widgets import BatteryWidget, TemperatureWidget, DepthWidget, CompassWidget, RollIndicatorWidget
 
 import sys
 import json
@@ -12,7 +12,7 @@ import math
 
 # --- NOVOS IMPORTS E AJUSTES ---
 from PySide6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QStackedLayout
-from PySide6.QtCore import QThread, Signal, Slot, QObject, Qt
+from PySide6.QtCore import QThread, Signal, Slot, QObject, Qt, QPointF
 from PySide6.QtGui import QFont, QPalette, QColor, QImage, QPixmap
 
 # --- O ROSClientWorker permanece o mesmo ---
@@ -91,6 +91,14 @@ def quaternion_to_yaw_degrees(w, x, y, z):
     yaw_rad = math.atan2(siny_cosp, cosy_cosp)
     return math.degrees(yaw_rad)
 
+# --- NOVA FUNÇÃO DE CONVERSÃO PARA ROLL ---
+def quaternion_to_roll_degrees(w, x, y, z):
+    """Converte um quatérnion para um ângulo de rolagem (roll) em graus."""
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
+    roll_rad = math.atan2(sinr_cosp, cosr_cosp)
+    return math.degrees(roll_rad)
+
 # --- Janela Principal da GUI (Atualizada) ---
 class ROV_GUI(QWidget):
     def __init__(self):
@@ -156,6 +164,9 @@ class ROV_GUI(QWidget):
         self.compass_widget = CompassWidget(self)
         # A posição será definida dinamicamente no resizeEvent para manter centralizado
 
+        # --- NOVO: Adiciona o indicador de roll ---
+        self.roll_indicator = RollIndicatorWidget(self)
+
         # --- NOVO: Widget do Miniplayer da Câmera Inferior ---
         self.down_camera_label = QLabel(self)
         self.down_camera_label.setFixedSize(320, 180) # Tamanho 16:9
@@ -186,6 +197,11 @@ class ROV_GUI(QWidget):
         # --- NOVO: Posiciona a bússola ---
         new_x_compass = (self.width() - self.compass_widget.width()) / 2
         self.compass_widget.move(int(new_x_compass), margin)
+
+        # --- NOVO: Posiciona o indicador de roll ---
+        new_x_roll = (self.width() - self.roll_indicator.width()) / 2
+        new_y_roll = (self.height() - self.roll_indicator.height()) / 2
+        self.roll_indicator.move(int(new_x_roll), int(new_y_roll))
 
     def conectar_videos(self):
         ip_wsl = "172.30.55.191" # <-- COLOQUE SEU IP AQUI
@@ -260,6 +276,10 @@ class ROV_GUI(QWidget):
                 # Converte o quatérnion para yaw e atualiza o widget
                 yaw_angle = quaternion_to_yaw_degrees(w, x, y, z)
                 self.compass_widget.set_yaw_angle(yaw_angle)
+
+                # --- NOVA SEÇÃO: Atualiza o Indicador de Roll ---
+                roll_angle = quaternion_to_roll_degrees(w, x, y, z)
+                self.roll_indicator.set_roll_angle(roll_angle)
 
             imu_data = dados.get('imu', {}); accel_data = imu_data.get('linear_acceleration', {}); orient_data = imu_data.get('orientation', {})
             local_pos_data = dados.get('local_position', {}); pos_data = local_pos_data.get('position', {})
